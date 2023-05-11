@@ -19,36 +19,30 @@ except AttributeError:
     temp_path = os.getcwd()
 
 # TODO: add more main modules here
+import json
+import urllib.request
 import threading
 import webbrowser
 import configparser
 
-name = 'GWE\'s TkTemplate'  # program name here
+pg_name = 'GWE\'s TkTemplate'  # program name here
 
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.0.0'  # displayed version (e.g. 1.0.0 Prerelease)
-internal_version = 'v1.0.0'  # internal version (must match GitHub release tag)
+version = '1.1.0'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.1.0'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
-license_name = '[insert license here]'  # name of the license you are using (e.g. "MIT")
 
-
-@staticmethod
-def report_error(exc=None, val=None, tb=None, term=True):
+def report_error(self=None, exc=None, val=None, tb=None, term=True):
     """
     Logs in the console and displays a dialog box showing the error.
-    replaces the report_callback_exception() function in
+    Replaces the report_callback_exception() function in
     the tkinter.Tk class.
-    NOTE: DO NOT REMOVE THE exc, val, tb ARGUMENTS!
+    NOTE: DO NOT REMOVE THE UNUSED ARGUMENTS! Due to the function replacement
+    these arguments must be added.
     """
-
-    # tries to call quit() in the Tk object (note: a try-except clause is used in case GUI.window is not set)
-    try:
-        GUI.window.quit()
-    except AttributeError:
-        pass
 
     e = traceback.format_exc()
     err_text = f'''\
@@ -72,15 +66,6 @@ class GUI:
         self.version = version
 
         self.window = window
-
-        try:
-            import requests
-            global requests
-            self.updates = True
-        except ImportError:
-            self.updates = False
-            print('ERROR: No "requests" module found! Update checking disabled.')
-            tk.messagebox.showerror('Error', 'No "requests" module found! Update checking disabled.')
 
         self.temp_path = temp_path
 
@@ -113,12 +98,12 @@ class GUI:
 
         # gets appdata folder
         if os.name == 'nt':
-            self.appdata_folder = f'{os.getenv("LOCALAPPDATA")}\\{name}'
+            self.appdata_folder = f'{os.getenv("LOCALAPPDATA")}\\{pg_name}'
         else:
             if platform.system() == 'Darwin':
-                self.appdata_folder = os.path.expanduser(f'~/Library/Application Support/{name}')
+                self.appdata_folder = os.path.expanduser(f'~/Library/Application Support/{pg_name}')
             else:
-                self.appdata_folder = os.path.expanduser(f'~/.config/{name}')
+                self.appdata_folder = os.path.expanduser(f'~/.config/{pg_name}')
 
         self.save_to_cwd = False
         self.ini = configparser.ConfigParser()
@@ -213,7 +198,7 @@ Do you want to continue?\
         """
 
         tk.messagebox.showinfo('Not implemented',
-                               f'This feature is not implemented into this version of {name}. Sorry!')
+                               f'This feature is not implemented into this version of {pg_name}. Sorry!')
 
     def refresh(self, load_func=False):
         """
@@ -236,7 +221,7 @@ Do you want to continue?\
         Sets the Tkinter window title.
         """
 
-        self.window.title(f'{name} {version}{" - " + custom_str if custom_str is not None else ""}')
+        self.window.title(f'{pg_name} {version}{" - " + custom_str if custom_str is not None else ""}')
 
     def init_window(self):
         """
@@ -249,19 +234,20 @@ Do you want to continue?\
         self.window.option_add('*tearOff', False)
         self.set_title()
         # TODO: uncomment this when you actually have an icon.ico file
-#         try:
-#             self.window.iconbitmap(f'{self.temp_path}\\icon.{"ico" if os.name == "nt" else "xbm"}')
-#         except tk.TclError:
-#             err_text = f'''\
-# Whoops! The icon file "icon.ico" is required.
-# Can you make sure the file is in "{self.temp_path}"?
-# {traceback.format_exc()}
-# If this problem persists, please report it here:
-# https://github.com/{username}/{repo_name}/issues\
-# '''
-#             print(err_text)
-#             tk.messagebox.showerror('Hmmm?', err_text)
-#             sys.exit()
+
+    #         try:
+    #             self.window.iconbitmap(f'{self.temp_path}\\icon.{"ico" if os.name == "nt" else "xbm"}')
+    #         except tk.TclError:
+    #             err_text = f'''\
+    # Whoops! The icon file "icon.ico" is required.
+    # Can you make sure the file is in "{self.temp_path}"?
+    # {traceback.format_exc()}
+    # If this problem persists, please report it here:
+    # https://github.com/{username}/{repo_name}/issues\
+    # '''
+    #             print(err_text)
+    #             tk.messagebox.showerror('Hmmm?', err_text)
+    #             sys.exit()
 
     def init_protocols(self):
         """
@@ -275,27 +261,29 @@ Do you want to continue?\
         Quits the program.
         """
 
-        # TODO: add other "open" bools here
-        if not self.updater_win_open:
-            self.window.quit()
-            sys.exit()
+        if not any([
+            self.updater_win_open,
+            # TODO: add other "open" bools here
+        ]):
+            # avoids SystemExit exceptions
+            os._exit(0)
 
     @staticmethod
     def about_menu():
         """
         Shows basic information about the version, system and architecture, as well as the license of the project.
+        NOTE: LICENSE CANNOT BE CHANGED, AS PER THE CONDITIONS OF THE GNU GPL-V3 LICENSE.
         """
 
         nl = '\n'
         syst = platform.system()
         syst += ' x64' if platform.machine().endswith('64') else ' x86'
-        tk.messagebox.showinfo(f'About {name}', f'''\
-{name} - {version} ({'64' if sys.maxsize > 2 ** 31 - 1 else '32'}-bit) - Running on {syst}
+        tk.messagebox.showinfo(f'About {pg_name}', f'''\
+{pg_name} - {version} ({'64' if sys.maxsize > 2 ** 31 - 1 else '32'}-bit) - Running on {syst}
 Project page: https://github.com/{username}/{repo_name}
 {nl + 'WARNING: This is a pre-release version, therefore it may have bugs and/or glitches.' + nl if prerelease else ''}
-Licensed under the {license_name} license
-
-[INSERT YOUR LICENSE BEFORE THE BACKSLASH, ONLY INSERT THE RELEVANT PART]\
+Licensed under the GNU GPL-v3 license
+(LICENSE file available on the GitHub repository or included with source code)\
 ''')
 
     def version_details(self, event=None):
@@ -306,8 +294,8 @@ Licensed under the {license_name} license
         """
 
         dnl = '\n\n'
-        tk.messagebox.showinfo(f'{name} version details', f'''\
-{name} {version}{" (prerelease)" if prerelease else ""}
+        tk.messagebox.showinfo(f'{pg_name} version details', f'''\
+{pg_name} {version}{" (prerelease)" if prerelease else ""}
 Internal version: {internal_version}
 
 Python version information:
@@ -346,9 +334,8 @@ Architecture: {platform.machine()}{dnl + "Settings file is saved to working dire
         menubar.add_cascade(label='Settings', menu=settings_menu)
 
         help_menu = tk.Menu(menubar)
-        help_menu.add_command(label='Check for updates', command=self.UpdaterGUI.init_window,
-                              state='normal' if self.updates else 'disabled')
-        help_menu.add_command(label=f'About {name}', command=self.about_menu)
+        help_menu.add_command(label='Check for updates', command=self.UpdaterGUI.init_window)
+        help_menu.add_command(label=f'About {pg_name}', command=self.about_menu)
         menubar.add_cascade(label='Help', menu=help_menu)
 
         self.window.config(menu=menubar)
@@ -372,6 +359,9 @@ Based on the RBEditor codebase\
         self.window.mainloop()
 
 
+# TODO: add some other classes here
+
+
 class UpdaterGUI:
     def __init__(self, gui):
         self.gui = gui
@@ -391,7 +381,7 @@ class UpdaterGUI:
             self.updater_win.resizable(False, False)
             self.updater_win.protocol('WM_DELETE_WINDOW', self.quit)
             self.updater_win.title('Updater')
-            # TODO: uncomment this when you actually have an icon.ico file
+# TODO: uncomment this when you actually have an icon.ico and icon.xbm file
 #             try:
 #                 self.updater_win.iconbitmap(f'{self.gui.temp_path}\\icon.{"ico" if os.name == "nt" else "xbm"}')
 #             except tk.TclError:
@@ -459,7 +449,7 @@ class UpdaterGUI:
         self.progressbar = ttk.Progressbar(self.updater_win, orient='horizontal', length=100, mode='determinate')
         self.progressbar.pack()
         ttk.Label(self.updater_win, text='DO NOT close the program\nwhile checking for updates',
-                  font=self.gui.bold_font).pack(side='bottom')
+                  justify='center', font=self.gui.bold_font).pack(side='bottom')
 
     def draw_msg(self, msg):
         if self.auto:
@@ -468,7 +458,7 @@ class UpdaterGUI:
         else:
             for w in self.updater_win.winfo_children():
                 w.destroy()
-            ttk.Label(self.updater_win, text=msg).pack()
+            ttk.Label(self.updater_win, text=msg, justify='center').pack()
             ttk.Button(self.updater_win, text='Back', command=self.quit).pack(side='bottom')
 
     def draw_download_msg(self, title, tag, prever):
@@ -494,7 +484,6 @@ New version: {title}{" (pre-release)" if prever else ""}\
         self.quit()
 
 
-# 99% of code copied from Sneky
 class Updater:
     def __init__(self):
         self.username, self.reponame = username, repo_name
@@ -503,15 +492,30 @@ class Updater:
         self.progress = 0
         self.progress_inc = 25
 
-    @staticmethod
-    def check_internet():
+    def check_internet(self):
         try:
-            requests.get('https://google.com')
+            self.request('https://google.com', True)
             return True
         except Exception:
             return False
 
-    def check_updates(self, prerelease):
+    def request(self, url, testing=False):
+        success = False
+        for i in range(self.request_limit):
+            try:
+                r = urllib.request.urlopen(url)
+                success = True
+                break
+            except Exception:
+                if not testing:
+                    if not self.check_internet():
+                        return
+        if success:
+            if not testing:
+                d = r.read().decode()
+                return json.loads(d)
+
+    def check_updates(self, pr):
         self.progress = 0
 
         if not self.check_internet():
@@ -526,16 +530,11 @@ class Updater:
             if not self.check_internet():
                 return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
 
-            for i in range(self.request_limit):
-                try:
-                    response = requests.get(f'https://api.github.com/repos/{self.username}/{self.reponame}/releases')
-                    break
-                except Exception:
-                    if not self.check_internet():
-                        return {'newupdate': False, 'error': True, 'exceeded': False,
-                                'nowifi': True}
+            response = self.request(f'https://api.github.com/repos/{self.username}/{self.reponame}/releases')
+            if response is None:
+                return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
 
-            for info in response.json():
+            for info in response:
                 versions.append(info['tag_name'])
 
             # UPDATE POINT 1
@@ -543,7 +542,7 @@ class Updater:
 
             if internal_version not in versions:
                 try:
-                    testvar = response.json()['message']
+                    testvar = response['message']
                     if 'API rate limit exceeded for' in testvar:
                         return {
                             'newupdate': False,
@@ -552,7 +551,7 @@ class Updater:
                         }
                     else:
                         return {'newupdate': False, 'error': False}
-                except KeyError:
+                except Exception:
                     return {'newupdate': False, 'error': False}
             if not self.check_internet():
                 return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
@@ -560,18 +559,12 @@ class Updater:
             # UPDATE POINT 2
             self.progress += self.progress_inc
 
-            for i in range(self.request_limit):
-                try:
-                    response = requests.get(
-                        f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/tags/{internal_version}'
-                    )
-                    break
-                except Exception:
-                    if not self.check_internet():
-                        return {'newupdate': False, 'error': True, 'exceeded': False,
-                                'nowifi': True}
+            response = self.request(
+                f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/tags/{internal_version}')
+            if response is None:
+                return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
             try:
-                testvar = response.json()['message']
+                testvar = response['message']
                 if 'API rate limit exceeded for' in testvar:
                     return {
                         'newupdate': False,
@@ -580,30 +573,23 @@ class Updater:
                     }
                 else:
                     return {'newupdate': False, 'error': False}
-            except KeyError:
+            except Exception:
                 pass
 
-            currvertime = response.json()['published_at']
+            currvertime = response['published_at']
 
             # UPDATE POINT 3
             self.progress += self.progress_inc
 
-            if not prerelease:
+            if not pr:
                 if not self.check_internet():
-                    return {'newupdate': False, 'error': True, 'exceeded': False,
-                            'nowifi': True}
+                    return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
 
-                for i in range(self.request_limit):
-                    try:
-                        response = requests.get(
-                            f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/latest')
-                        break
-                    except Exception:
-                        if not self.check_internet():
-                            return {'newupdate': False, 'error': True, 'exceeded': False,
-                                    'nowifi': True}
+                response = self.request(f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/latest')
+                if response is None:
+                    return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
                 try:
-                    testvar = response.json()['message']
+                    testvar = response['message']
                     if 'API rate limit exceeded for' in testvar:
                         return {
                             'newupdate': False,
@@ -614,13 +600,13 @@ class Updater:
                         return {'newupdate': False, 'error': False}
                 except Exception:
                     pass
-                if response.json()['tag_name'] != internal_version and response.json()['published_at'] > currvertime:
+                if response['tag_name'] != internal_version and response['published_at'] > currvertime:
                     return {
                         'newupdate': True,
                         'prerelease': False,
                         'error': False,
-                        'title': response.json()['name'],
-                        'tag': response.json()['tag_name']
+                        'title': response['name'],
+                        'tag': response['tag_name']
                     }
                 else:
                     return {
@@ -629,22 +615,16 @@ class Updater:
                         'error': False
                     }
             else:
-                for version in versions:
+                for ver in versions:
                     if not self.check_internet():
-                        return {'newupdate': False, 'error': True, 'exceeded': False,
-                                'nowifi': True}
+                        return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
 
-                    for i in range(self.request_limit):
-                        try:
-                            response = requests.get(
-                                f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/tags/{version}')
-                            break
-                        except Exception:
-                            if not self.check_internet():
-                                return {'newupdate': False, 'error': True, 'exceeded': False,
-                                        'nowifi': True}
+                    response = self.request(
+                        f'https://api.github.com/repos/{self.username}/{self.reponame}/releases/tags/{ver}')
+                    if response is None:
+                        return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': True}
                     try:
-                        testvar = response.json()['message']
+                        testvar = response['message']
                         if 'API rate limit exceeded for' in testvar:
                             return {
                                 'newupdate': False,
@@ -655,13 +635,13 @@ class Updater:
                             return {'newupdate': False, 'error': True, 'exceeded': False, 'nowifi': False}
                     except Exception:
                         pass
-                    if currvertime < response.json()['published_at']:
+                    if currvertime < response['published_at']:
                         return {
                             'newupdate': True,
-                            'prerelease': response.json()['prerelease'],
+                            'prerelease': response['prerelease'],
                             'error': False,
-                            'title': response.json()['name'],
-                            'tag': response.json()['tag_name']
+                            'title': response['name'],
+                            'tag': response['tag_name']
                         }
                     else:
                         return {
