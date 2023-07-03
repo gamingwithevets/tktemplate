@@ -24,14 +24,15 @@ import urllib.request
 import threading
 import webbrowser
 import configparser
+import pkg_resources
 
 pg_name = 'GWE\'s TkTemplate'  # program name here
 
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.1.0'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.1.0'  # internal version (must match GitHub release tag)
+version = '1.2.0'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.0'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -94,7 +95,7 @@ class GUI:
         self.check_prerelease_version = tk.BooleanVar()
         self.check_prerelease_version.set(False)
 
-        self.enable_rbin_metadata_unsupported_version_msg = False
+        self.debug = False
 
         # gets appdata folder
         if os.name == 'nt':
@@ -134,9 +135,36 @@ Do you want to continue?\
         """
 
         # TODO: add more commands here
+
+        self.updates_checked = False
+
         if self.auto_check_updates.get():
-            self.UpdaterGUI.init_window(True)
+            threading.Thread(target=self.auto_update).start()
+        else:
+            self.updates_checked = True
         self.main()
+
+    def auto_update(self):
+        self.update_thread = ThreadWithResult(target=self.UpdaterGUI.updater.check_updates, args=(True,))
+        self.update_thread.start()
+        i = 0
+        j = 0
+        mult = 5000
+        while self.update_thread.is_alive():
+            if i == mult * 4:
+                i += 1
+                j = 1
+            else:
+                i = i - 1 if j else i + 1
+            if i == 0:
+                j = 0
+            print(' ' * (int(i / mult)) + '.' + ' ' * (5 - int(i / mult)), end='\r')
+        print('\r     ', end='\r')
+        update_info = self.update_thread.result
+        if update_info['newupdate']:
+            self.UpdaterGUI.init_window(True, (update_info['title'], update_info['tag'], update_info['prerelease'],
+                                        update_info['body']))
+        self.updates_checked = True
 
     def parse_settings(self):
         """
@@ -167,6 +195,12 @@ Do you want to continue?\
                 except (configparser.NoSectionError, configparser.NoOptionError):
                     pass
 
+            if 'dont_touch_this_area_unless_you_know_what_youre_doing' in sects:
+                try:
+                    self.debug = self.ini.getboolean('dont_touch_this_area_unless_you_know_what_youre_doing', 'debug')
+                except (configparser.NoSectionError, configparser.NoOptionError):
+                    pass
+
         self.save_settings()
 
     def save_settings(self):
@@ -174,13 +208,20 @@ Do you want to continue?\
         Saves the program settings.
         """
 
-        # settings are set individually to retain compatibility between versions
-        self.ini['settings'] = {}
+        # settings are set individually and initialized when needed to retain compatibility between versions
+        if 'settings' not in self.ini.keys():
+            self.ini['settings'] = {}
+
         # TODO: add commands for saving settings
 
-        self.ini['updater'] = {}
+        if 'updater' not in self.ini.keys():
+            self.ini['updater'] = {}
         self.ini['updater']['auto_check_updates'] = str(self.auto_check_updates.get())
         self.ini['updater']['check_prerelease_version'] = str(self.check_prerelease_version.get())
+
+        if 'dont_touch_this_area_unless_you_know_what_youre_doing' not in self.ini.keys():
+            self.ini['dont_touch_this_area_unless_you_know_what_youre_doing'] = {}
+        self.ini['dont_touch_this_area_unless_you_know_what_youre_doing']['debug'] = str(self.debug)
 
         if self.save_to_cwd:
             with open(os.path.join(os.getcwd(), 'settings.ini'), 'w') as f:
@@ -233,7 +274,7 @@ Do you want to continue?\
         self.window.bind('<F12>', self.version_details)
         self.window.option_add('*tearOff', False)
         self.set_title()
-        # TODO: uncomment this when you actually have an icon.ico file
+        # TODO: uncomment this when you actually have an icon.ico/xbm file
 
     #         try:
     #             self.window.iconbitmap(f'{self.temp_path}\\icon.{"ico" if os.name == "nt" else "xbm"}')
@@ -265,8 +306,7 @@ Do you want to continue?\
             self.updater_win_open,
             # TODO: add other "open" bools here
         ]):
-            # avoids SystemExit exceptions
-            os._exit(0)
+            sys.exit()
 
     @staticmethod
     def about_menu():
@@ -309,6 +349,15 @@ Operating system information:
 Architecture: {platform.machine()}{dnl + "Settings file is saved to working directory" if self.save_to_cwd else ""}\
 ''')
 
+    def disable_debug(self):
+        if tk.messagebox.askyesno('Warning',
+                                  '''To re-enable debug mode you must set the debug flag to True in settings.ini.
+                                  Continue?''',
+                                  icon='warning'):
+            self.debug = False
+            self.save_settings()
+            self.menubar()  # update the menubar
+
     def menubar(self):
         """
         Sets up the menubar.
@@ -330,6 +379,16 @@ Architecture: {platform.machine()}{dnl + "Settings file is saved to working dire
                                               variable=self.check_prerelease_version,
                                               command=self.save_settings)
         settings_menu.add_cascade(label='Updates', menu=updater_settings_menu)
+
+        if self.debug:
+            settings_menu.add_separator()
+            debug_menu = tk.Menu(settings_menu)
+            debug_menu.add_command(label='Version details', command=self.version_details, accelerator='F12')
+            debug_menu.add_separator()
+            debug_menu.add_command(label='Updater test', command=lambda: self.UpdaterGUI.init_window(debug=True))
+            debug_menu.add_separator()
+            debug_menu.add_command(label='Disable debug mode', command=self.disable_debug)
+            settings_menu.add_cascade(label='Debug', menu=debug_menu)
 
         menubar.add_cascade(label='Settings', menu=settings_menu)
 
@@ -369,19 +428,19 @@ class UpdaterGUI:
         self.auto = False
         self.after_ms = 100
 
-    def init_window(self, auto=False):
+    def init_window(self, auto=False, auto_download_options=None, debug=False):
         if not self.gui.updater_win_open:
             self.gui.updater_win_open = True
 
-            if auto:
-                self.auto = True
+            self.auto = auto
+            self.debug = debug
 
-            self.updater_win = tk.Toplevel(self.gui.window)
-            self.updater_win.geometry('300x120')
-            self.updater_win.resizable(False, False)
-            self.updater_win.protocol('WM_DELETE_WINDOW', self.quit)
-            self.updater_win.title('Updater')
-# TODO: uncomment this when you actually have an icon.ico and icon.xbm file
+            self.win = tk.Toplevel(self.gui.window)
+            self.win.geometry('400x200')
+            self.win.resizable(False, False)
+            self.win.protocol('WM_DELETE_WINDOW', self.quit)
+            self.win.title('Updater')
+            # TODO: uncomment this when you actually have an icon.ico/xbm file
 #             try:
 #                 self.updater_win.iconbitmap(f'{self.gui.temp_path}\\icon.{"ico" if os.name == "nt" else "xbm"}')
 #             except tk.TclError:
@@ -396,16 +455,17 @@ class UpdaterGUI:
 #                 tk.messagebox.showerror('Hmmm?', err_text)
 #                 sys.exit()
 
-            if self.auto:
-                self.updater_win.withdraw()
-                self.gui.set_title('Checking for updates...')
-            self.updater_win.focus()
-            self.updater_win.grab_set()
-            self.main()
+            self.win.focus()
+            self.win.grab_set()
+            if self.debug:
+                self.debug_menu()
+            elif self.auto:
+                self.win.after(0, lambda: self.draw_download_msg(*auto_download_options))
+            else: self.main()
 
     def quit(self):
-        self.updater_win.grab_release()
-        self.updater_win.destroy()
+        self.win.grab_release()
+        self.win.destroy()
         self.gui.updater_win_open = False
         if self.auto:
             self.auto = False
@@ -416,13 +476,17 @@ class UpdaterGUI:
                                               args=(self.gui.check_prerelease_version.get(),))
 
         self.draw_check()
-        self.updater_win.after(1, self.start_thread)
-        self.updater_win.mainloop()
+        self.win.after(1, self.start_thread)
+        self.win.mainloop()
+
+    def debug_menu(self):
+        ttk.Label(self.win, text='Nothing here yet...').pack()
+        ttk.Button(self.win, text='Quit', command=self.quit).pack(side='bottom')
 
     def start_thread(self):
         self.update_thread.start()
         while self.update_thread.is_alive():
-            self.updater_win.update_idletasks()
+            self.win.update_idletasks()
             self.progressbar['value'] = self.gui.updater.progress
         self.progressbar['value'] = 100
         self.update_thread.join()
@@ -442,13 +506,13 @@ class UpdaterGUI:
             self.draw_msg('You are already using the latest version.')
 
     def draw_check(self):
-        for w in self.updater_win.winfo_children():
+        for w in self.win.winfo_children():
             w.destroy()
 
-        ttk.Label(self.updater_win, text='Checking for updates...').pack()
-        self.progressbar = ttk.Progressbar(self.updater_win, orient='horizontal', length=100, mode='determinate')
+        ttk.Label(self.win, text='Checking for updates...').pack()
+        self.progressbar = ttk.Progressbar(self.win, orient='horizontal', length=100, mode='determinate')
         self.progressbar.pack()
-        ttk.Label(self.updater_win, text='DO NOT close the program\nwhile checking for updates',
+        ttk.Label(self.win, text='DO NOT close the program\nwhile checking for updates',
                   justify='center', font=self.gui.bold_font).pack(side='bottom')
 
     def draw_msg(self, msg):
@@ -456,28 +520,59 @@ class UpdaterGUI:
             self.gui.set_title()
             self.quit()
         else:
-            for w in self.updater_win.winfo_children():
+            for w in self.win.winfo_children():
                 w.destroy()
-            ttk.Label(self.updater_win, text=msg, justify='center').pack()
-            ttk.Button(self.updater_win, text='Back', command=self.quit).pack(side='bottom')
+            ttk.Label(self.win, text=msg, justify='center').pack()
+            ttk.Button(self.win, text='Back', command=self.quit).pack(side='bottom')
 
-    def draw_download_msg(self, title, tag, prever):
+    @staticmethod
+    def package_installed(package):
+        try:
+            pkg_resources.get_distribution(package)
+        except pkg_resources.DistributionNotFound:
+            return False
+
+        return True
+
+    def draw_download_msg(self, title, tag, prever, body):
         if self.auto:
-            self.updater_win.deiconify()
+            self.win.deiconify()
             self.gui.set_title()
-        for w in self.updater_win.winfo_children():
+        for w in self.win.winfo_children():
             w.destroy()
-        ttk.Label(self.updater_win, justify='center', text=f'''\
+        ttk.Label(self.win, justify='center', text=f'''\
 An update is available!')
 Current version: {self.gui.version}{" (pre-release)" if prerelease else ""}
 New version: {title}{" (pre-release)" if prever else ""}\
 ''')
-        ttk.Button(self.updater_win, text='Cancel', command=self.quit).pack(side='bottom')
-        ttk.Button(self.updater_win, text='Visit download page',
+        ttk.Button(self.win, text='Cancel', command=self.quit).pack(side='bottom')
+        ttk.Button(self.win, text='Visit download page',
                    command=lambda: self.open_download(tag)).pack(side='bottom')
 
+        ttk.Label(self.win).pack()
+
+        packages_missing = []
+        for package in ('markdown', 'mdformat-gfm', 'tkinterweb'):
+            if not self.package_installed(package):
+                packages_missing.append(package)
+
+        if packages_missing:
+            ttk.Label(self.win,
+                f'Missing package(s): {", ".join(packages_missing[:2])}{" and " + str(len(packages_missing) - 2) + " others" if len(packages_missing) > 2 else ""}',
+                font=self.gui.bold_font).pack()
+        else:
+            import markdown
+            import mdformat
+            import tkinterweb
+
+            html = tkinterweb.HtmlFrame(self.win, messages_enabled=False)
+            html.load_html(
+                markdown.markdown(mdformat.text(body)).replace('../..', f'https://github.com/{username}/{repo_name}'))
+            html.on_link_click(webbrowser.open_new_tab)
+            html.pack()
+
         if self.auto:
-            self.updater_win.deiconify()
+            self.win.deiconify()
 
     def open_download(self, tag):
         webbrowser.open_new_tab(f'https://github.com/{username}/{repo_name}/releases/tag/{tag}')
@@ -606,7 +701,8 @@ class Updater:
                         'prerelease': False,
                         'error': False,
                         'title': response['name'],
-                        'tag': response['tag_name']
+                        'tag': response['tag_name'],
+                        'body': response['body']
                     }
                 else:
                     return {
@@ -641,7 +737,8 @@ class Updater:
                             'prerelease': response['prerelease'],
                             'error': False,
                             'title': response['name'],
-                            'tag': response['tag_name']
+                            'tag': response['tag_name'],
+                            'body': response['body']
                         }
                     else:
                         return {

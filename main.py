@@ -1,3 +1,4 @@
+import os
 import sys
 import platform
 import traceback
@@ -38,5 +39,7 @@ If this problem persists, please report it here:\nhttps://github.com/{username}/
 try:
 	g = gui.GUI(tk.Tk())
 	g.start_main()
+except SystemExit:
+	os._exit(0)
 except Exception:
 	gui.report_error()
