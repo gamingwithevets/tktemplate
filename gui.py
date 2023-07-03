@@ -31,8 +31,8 @@ pg_name = 'GWE\'s TkTemplate'  # program name here
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.2.0'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.2.0'  # internal version (must match GitHub release tag)
+version = '1.2.0_01'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.0_01'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -333,8 +333,9 @@ Licensed under the GNU GPL-v3 license
         Note: DO NOT REMOVE THE event ARGUMENT!
         """
 
-        dnl = '\n\n'
-        tk.messagebox.showinfo(f'{pg_name} version details', f'''\
+        if self.debug:
+            dnl = '\n\n'
+            tk.messagebox.showinfo(f'{pg_name} version details', f'''\
 {pg_name} {version}{" (prerelease)" if prerelease else ""}
 Internal version: {internal_version}
 
