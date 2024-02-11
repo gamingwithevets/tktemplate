@@ -31,8 +31,8 @@ pg_name = 'GWE\'s TkTemplate'  # program name here
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.2.0_01'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.2.0_01'  # internal version (must match GitHub release tag)
+version = '1.2.1'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.1'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -481,7 +481,17 @@ class UpdaterGUI:
         self.win.mainloop()
 
     def debug_menu(self):
-        ttk.Label(self.win, text='Nothing here yet...').pack()
+        ttk.Button(self.win, text='Check updates', command=self.main).pack()
+        ttk.Button(self.win, text='Message test',
+                   command=lambda: self.draw_msg('Updater message test.\nLine 2\nLine 3\nLine 4')).pack()
+        ttk.Button(self.win, text='New update screen test',
+                   command=lambda: self.draw_download_msg('testbuild69', 'b1.0.0', False, '''\
+Hello! **This is a *test* of the updater\'s Markdown viewer**, made possible with the [Markdown](https://pypi.org/project/Markdown/), [`mdformat`](https://pypi.org/project/mdformat/), and [TkinterWeb](https://pypi.org/project/tkinterweb/) modules.
+
+By the way, [here\'s the GitHub repository](../../) if you want to check it out. And here\'s [TkTemplate](../../../tktemplate) which is a Tkinter template based on RBEditor.
+
+While you\'re here, why don\'t you check out my [Discord server](//gamingwithevets.github.io/redirector/discord)? It\'s pretty empty here, and I\'d really appreciate it if you could join.\
+''')).pack()
         ttk.Button(self.win, text='Quit', command=self.quit).pack(side='bottom')
 
     def start_thread(self):
