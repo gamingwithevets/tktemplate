@@ -31,8 +31,8 @@ pg_name = 'GWE\'s TkTemplate'  # program name here
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.2.1_02'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.2.1_02'  # internal version (must match GitHub release tag)
+version = '1.2.1_03'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.1_03'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -504,11 +504,13 @@ Also, you should check out the [Steveyboi/GWE Discord server](https://gamingwith
         update_info = self.update_thread.result
 
         if update_info['error']:
-            if update_info['exceeded']:
+            if 'exceeded' in update_info and update_info['exceeded']:
                 self.draw_msg('GitHub API rate limit exceeded! Please try again later.')
-            elif update_info['nowifi']:
+            elif 'nowifi' in update_info and update_info['nowifi']:
                 self.draw_msg(
                     'Unable to connect to the internet. Please try again\nwhen you have a stable internet connection.')
+            elif 'prerelease' in update_info and update_info['prerelease']:
+                self.draw_msg('Cannot get the latest release. Try enabling "Check for\npre-release versions" in Settings.')
             else:
                 self.draw_msg('Unable to check for updates! Please try again later.')
         elif update_info['newupdate']:
@@ -703,7 +705,7 @@ class Updater:
                             'exceeded': True
                         }
                     else:
-                        return {'newupdate': False, 'error': False}
+                        return {'newupdate': False, 'error': True, 'prerelease': True}
                 except Exception:
                     pass
                 if response['tag_name'] != internal_version and response['published_at'] > currvertime:
