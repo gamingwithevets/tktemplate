@@ -31,8 +31,8 @@ pg_name = 'GWE\'s TkTemplate'  # program name here
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.2.1_01'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.2.1_01'  # internal version (must match GitHub release tag)
+version = '1.2.1_02'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.1_02'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -473,7 +473,7 @@ class UpdaterGUI:
             self.gui.main()
 
     def main(self):
-        self.update_thread = ThreadWithResult(target=self.gui.updater.check_updates,
+        self.update_thread = ThreadWithResult(target=self.updater.check_updates,
                                               args=(self.gui.check_prerelease_version.get(),))
 
         self.draw_check()
@@ -498,7 +498,7 @@ Also, you should check out the [Steveyboi/GWE Discord server](https://gamingwith
         self.update_thread.start()
         while self.update_thread.is_alive():
             self.win.update_idletasks()
-            self.progressbar['value'] = self.gui.updater.progress
+            self.progressbar['value'] = self.updater.progress
         self.progressbar['value'] = 100
         self.update_thread.join()
         update_info = self.update_thread.result
