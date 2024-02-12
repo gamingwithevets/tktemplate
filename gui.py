@@ -31,8 +31,8 @@ pg_name = 'GWE\'s TkTemplate'  # program name here
 username = 'gamingwithevets'  # GitHub username here
 repo_name = 'tktemplate'  # GitHub repository name here
 
-version = '1.2.1'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
-internal_version = 'v1.2.1'  # internal version (must match GitHub release tag)
+version = '1.2.1_01'  # displayed version (e.g. 1.0.0 Prerelease - must match GH release title)
+internal_version = 'v1.2.1_01'  # internal version (must match GitHub release tag)
 prerelease = False  # prerelease flag (must match GitHub release's prerelease flag)
 
 
@@ -112,7 +112,7 @@ class GUI:
 
         self.refreshing = True
 
-        self.updater = Updater()  # the updater does not need the GUI class as it runs independently of it.
+        # TODO: add more toplevel classes
         self.UpdaterGUI = UpdaterGUI(self)
 
         self.unsupported_tcl = False
@@ -352,8 +352,7 @@ Architecture: {platform.machine()}{dnl + "Settings file is saved to working dire
 
     def disable_debug(self):
         if tk.messagebox.askyesno('Warning',
-                                  '''To re-enable debug mode you must set the debug flag to True in settings.ini.
-                                  Continue?''',
+                                  'To re-enable debug mode you must set the debug flag to True in settings.ini.\nContinue?',
                                   icon='warning'):
             self.debug = False
             self.save_settings()
@@ -426,8 +425,9 @@ class UpdaterGUI:
     def __init__(self, gui):
         self.gui = gui
 
-        self.auto = False
         self.after_ms = 100
+
+        self.updater = Updater()
 
     def init_window(self, auto=False, auto_download_options=None, debug=False):
         if not self.gui.updater_win_open:
@@ -437,7 +437,7 @@ class UpdaterGUI:
             self.debug = debug
 
             self.win = tk.Toplevel(self.gui.window)
-            self.win.geometry('400x200')
+            self.win.geometry('400x400')
             self.win.resizable(False, False)
             self.win.protocol('WM_DELETE_WINDOW', self.quit)
             self.win.title('Updater')
@@ -485,12 +485,12 @@ class UpdaterGUI:
         ttk.Button(self.win, text='Message test',
                    command=lambda: self.draw_msg('Updater message test.\nLine 2\nLine 3\nLine 4')).pack()
         ttk.Button(self.win, text='New update screen test',
-                   command=lambda: self.draw_download_msg('testbuild69', 'b1.0.0', False, '''\
+                   command=lambda: self.draw_download_msg(version, internal_version, False, '''\
 Hello! **This is a *test* of the updater\'s Markdown viewer**, made possible with the [Markdown](https://pypi.org/project/Markdown/), [`mdformat`](https://pypi.org/project/mdformat/), and [TkinterWeb](https://pypi.org/project/tkinterweb/) modules.
 
-By the way, [here\'s the GitHub repository](../../) if you want to check it out. And here\'s [TkTemplate](../../../tktemplate) which is a Tkinter template based on RBEditor.
+By the way, here\'s [TkTemplate](https://github.com/gamingwithevets/tktemplate), which is what this program was based on.
 
-While you\'re here, why don\'t you check out my [Discord server](//gamingwithevets.github.io/redirector/discord)? It\'s pretty empty here, and I\'d really appreciate it if you could join.\
+Also, you should check out the [Steveyboi/GWE Discord server](https://gamingwithevets.github.io/redirector/discord).\
 ''')).pack()
         ttk.Button(self.win, text='Quit', command=self.quit).pack(side='bottom')
 
@@ -552,10 +552,10 @@ While you\'re here, why don\'t you check out my [Discord server](//gamingwitheve
         for w in self.win.winfo_children():
             w.destroy()
         ttk.Label(self.win, justify='center', text=f'''\
-An update is available!')
+An update is available!
 Current version: {self.gui.version}{" (pre-release)" if prerelease else ""}
 New version: {title}{" (pre-release)" if prever else ""}\
-''')
+''').pack()
         ttk.Button(self.win, text='Cancel', command=self.quit).pack(side='bottom')
         ttk.Button(self.win, text='Visit download page',
                    command=lambda: self.open_download(tag)).pack(side='bottom')
@@ -569,7 +569,7 @@ New version: {title}{" (pre-release)" if prever else ""}\
 
         if packages_missing:
             ttk.Label(self.win,
-                f'Missing package(s): {", ".join(packages_missing[:2])}{" and " + str(len(packages_missing) - 2) + " others" if len(packages_missing) > 2 else ""}',
+                text=f'Missing package(s): {", ".join(packages_missing[:2])}{" and " + str(len(packages_missing) - 2) + " others" if len(packages_missing) > 2 else ""}',
                 font=self.gui.bold_font).pack()
         else:
             import markdown
