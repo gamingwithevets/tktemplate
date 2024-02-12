@@ -614,7 +614,10 @@ class Updater:
                 r = urllib.request.urlopen(url)
                 success = True
                 break
-            except Exception:
+            except urllib.error.HTTPError as e:
+                r = e.fp
+                success = True
+            except urllib.error.URLError as e:
                 if not testing:
                     if not self.check_internet():
                         return
